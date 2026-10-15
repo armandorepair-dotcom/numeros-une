@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chispa Didáctica - Une Números, Letras y Cantidades</title>
+    <!-- Google Fonts para tipografía infantil y llamativa -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Quicksand:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #f0f8ff;
+            --primary: #ff6b6b;
+            --secondary: #4ecdc4;
+            --accent: #ffe66d;
+            --dark: #2d3436;
+            --card-num: #ff9f43;
+            --card-word: #54a0ff;
+            --card-dots: #5f27cd;
+            --success: #1dd1a1;
+            --danger: #ee5253;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background: linear-gradient(135deg, #74b9ff, #a29bfe);
+            color: var(--dark);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px;
+            overflow-x: hidden;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        h1 {
+            font-family: 'Fredoka One', cursive;
+            font-size: 2.2rem;
+            color: #fff;
+            text-shadow: 3px 3px 0px #e84393, 5px 5px 0px rgba(0,0,0,0.2);
+            letter-spacing: 1px;
+        }
+
+        .stats-bar {
+            display: flex;
+            gap: 15px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 8px 20px;
+            border-radius: 50px;
+            font-family: 'Fredoka One', cursive;
+            font-size: 1.1rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            margin-bottom: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .stat-item span {
+            color: #e84393;
+        }
+
+        .speaker-btn {
+            background: var(--accent);
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            transition: transform 0.2s, background 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .speaker-btn:hover {
+            transform: scale(1.1);
+            background: #feca57;
+        }
+
+        /* Contenedor del Pizarrón */
+        .board-container {
+            position: relative;
+            background: #fff;
+            width: 100%;
+            max-width: 950px;
+            border-radius: 25px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            border: 8px solid #ffbe76;
+            margin-bottom: 20px;
+        }
+
+        /* SVG para las líneas de unión (por encima de los elementos con z-index alto) */
+        #line-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        .board-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .column {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .column-title {
+            font-family: 'Fredoka One', cursive;
+            text-align: center;
+            font-size: 1.1rem;
+            padding: 6px;
+            border-radius: 10px;
+            color: #fff;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+
+        .col-1-title { background: var(--card-num); }
+        .col-2-title { background: var(--card-word); }
+        .col-3-title { background: var(--card-dots); }
+
+        .card {
+            background: #f1f2f6;
+            border: 4px solid #dfe4ea;
+            border-radius: 15px;
+            height: 52px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Fredoka One', cursive;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        .card:hover:not(.matched):not(.disabled) {
+            transform: translateY(-3px);
+            border-color: #70a1ff;
+            background: #e4f1fe;
+        }
+
+        .card.selected {
+            border-color: #ff4757 !important;
+            background: #ffedeefc !important;
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(255, 71, 87, 0.5);
+        }
+
+        .card.matched {
+            background: #d4edda !important;
+            border-color: var(--success) !important;
+            color: #155724 !important;
+            cursor: default;
+            opacity: 0.9;
+        }
+
+        .card.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Contenedor de pelotitas */
+        .dots-wrapper {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            justify-content: center;
+            align-items: center;
+            padding: 4px;
+            max-width: 130px;
+        }
+
+        .dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            display: inline-block;
+        }
+
+        /* Pantallas modales (Inicio, Mensajes y Resultados) */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: #fff;
+            padding: 30px;
+            border-radius: 30px;
+            text-align: center;
+            max-width: 500px;
+            width: 100%;
+            border: 8px solid var(--secondary);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+            animation: bounceIn 0.5s ease;
+        }
+
+        .modal-content h2 {
+            font-family: 'Fredoka One', cursive;
+            font-size: 2rem;
+            color: #ff6b6b;
+            margin-bottom: 15px;
+        }
+
+        .modal-content p {
+            font-size: 1.2rem;
+            margin-bottom: 25px;
+            color: #576574;
+            line-height: 1.5;
+        }
+
+        .btn {
+            font-family: 'Fredoka One', cursive;
+            background: var(--success);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1.3rem;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 6px 0 #0b8f6c;
+            transition: all 0.1s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 0 #0b8f6c;
+        }
+
+        .btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 #0b8f6c;
+        }
+
+        /* Notificación flotante de estímulo */
+        #feedback-banner {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background: #ff4757;
+            color: white;
+            font-family: 'Fredoka One', cursive;
+            font-size: 1.8rem;
+            padding: 12px 35px;
+            border-radius: 50px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+            z-index: 2000;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            text-align: center;
+            border: 4px solid #fff;
+        }
+
+        #feedback-banner.show {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        @keyframes bounceIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            70% { transform: scale(1.05); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        @media (max-width: 768px) {
+            h1 { font-size: 1.6rem; }
+            .board-container { padding: 10px; border-width: 4px; }
+            .card { height: 44px; font-size: 1.2rem; }
+            .dot { width: 11px; height: 11px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Pantalla de Bienvenida -->
+    <div id="welcome-modal" class="modal">
+        <div class="modal-content">
+            <h2>¡Chispa Didáctica! 🧠✨</h2>
+            <p>Une los números con su letra correspondiente y la cantidad de pelotitas correcta.</p>
+            <button class="btn" onclick="startGame()">¡Comenzar Juego!</button>
+        </div>
+    </div>
+
+    <!-- Pantalla de Fin de Juego / Opciones -->
+    <div id="gameover-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h2 id="modal-title">¡Juego Terminado!</h2>
+            <p id="modal-text">Resumen de tu desempeño en las rondas.</p>
+            <button class="btn" id="modal-btn" onclick="restartFullGame()">Jugar de Nuevo</button>
+        </div>
+    </div>
+
+    <!-- Banner de estímulo flotante -->
+    <div id="feedback-banner">¡EXCELENTE!</div>
+
+    <header>
+        <h1>🌟 Pizarrón Mágico Interactivo 🌟</h1>
+    </header>
+
+    <div class="stats-bar">
+        <div class="stat-item">Ronda: <span id="current-round">1</span> / 2</div>
+        <div class="stat-item">Fallas: <span id="current-mistakes">0</span> / 4 máx</div>
+        <button class="speaker-btn" onclick="speakCurrentTask()" title="Escuchar instrucción">🔊</button>
+    </div>
+
+    <div class="board-container" id="board-container">
+        <!-- SVG dinámico para las líneas que conectan cartas -->
+        <svg id="line-canvas"></svg>
+
+        <div class="board-grid">
+            <!-- Columna 1: Números -->
+            <div class="column">
+                <div class="column-title col-1-title">Número</div>
+                <div id="col-nums" class="column"></div>
+            </div>
+            <!-- Columna 2: Letras -->
+            <div class="column">
+                <div class="column-title col-2-title">Letra</div>
+                <div id="col-words" class="column"></div>
+            </div>
+            <!-- Columna 3: Pelotitas -->
+            <div class="column">
+                <div class="column-title col-3-title">Cantidad</div>
+                <div id="col-dots" class="column"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const numberWords = ["UNO", "DOS", "TRES", "CUATRO", "CINCO", "SEIS", "SIETE", "OCHO", "NUEVE", "DIEZ"];
+        const dotColors = ['#ff4757', '#2ed573', '#1e90ff', '#ffa502', '#9b59b6', '#ff6b81', '#70a1ff', '#2f3640', '#e056fd', '#686de0'];
+
+        let round = 1;
+        let mistakes = 0;
+        let currentActiveNum = null; // Número actualmente seleccionado en columna 1
+        let currentActiveWordCard = null; // Tarjeta de letra seleccionada esperando cantidad
+        let lines = []; // Almacena las conexiones exitosas realizadas
+        
+        let roundData = []; // Datos de la ronda actual {value, wordIndex}
+
+        function speak(text, callback) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'es-MX';
+                utterance.rate = 0.95;
+                if (callback) utterance.onend = callback;
+                window.speechSynthesis.speak(utterance);
+            } else if (callback) {
+                callback();
+            }
+        }
+
+        function showFeedback(text) {
+            const banner = document.getElementById('feedback-banner');
+            banner.innerText = text;
+            banner.classList.add('show');
+            setTimeout(() => {
+                banner.classList.remove('show');
+            }, 1800);
+        }
+
+        function startGame() {
+            document.getElementById('welcome-modal').style.display = 'none';
+            round = 1;
+            mistakes = 0;
+            updateStats();
+            initRound();
+        }
+
+        function speakCurrentTask() {
+            speak("UNE LOS NUMEROS, CON SU LETRA Y CANTIDAD. Comienza seleccionando el número " + currentActiveNum);
+        }
+
+        function initRound() {
+            mistakes = 0;
+            lines = [];
+            currentActiveNum = null;
+            currentActiveWordCard = null;
+            updateStats();
+            document.getElementById('line-canvas').innerHTML = '';
+
+            // Generar 10 números del 1 al 10 en orden aleatorio para la Columna 1
+            let numbers = Array.from({length: 10}, (_, i) => i + 1);
+            shuffle(numbers);
+
+            // Para la Columna 2 (Letras) y Columna 3 (Pelotitas), mezclamos también de forma independiente
+            let wordsIndices = [...numbers.map(n => n - 1)];
+            shuffle(wordsIndices);
+
+            let dotsIndices = [...numbers.map(n => n - 1)];
+            shuffle(dotsIndices);
+
+            roundData = numbers.map((num, idx) => ({
+                num: num,
+                wordVal: wordsIndices[idx],
+                dotsVal: dotsIndices[idx]
+            }));
+
+            renderColumns(numbers, wordsIndices, dotsIndices);
+
+            // Encontrar el primer número disponible para guiar al niño
+            let firstUnmatched = numbers[0];
+            currentActiveNum = firstUnmatched;
+
+            // Indicación inicial exacta solicitada
+            speak("UNE LOS NUMEROS, CON SU LETRA Y CANTIDAD", () => {
+                speak("Busca el número " + currentActiveNum);
+            });
+        }
+
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function renderColumns(nums, wordsIdxs, dotsIdxs) {
+            const colNums = document.getElementById('col-nums');
+            const colWords = document.getElementById('col-words');
+            const colDots = document.getElementById('col-dots');
+
+            colNums.innerHTML = '';
+            colWords.innerHTML = '';
+            colDots.innerHTML = '';
+
+            // Renderizar Columna 1 (Números)
+            nums.forEach(n => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.dataset.value = n;
+                card.dataset.col = '1';
+                card.innerText = n;
+                card.onclick = () => handleCardClick(card, 1, n);
+                colNums.appendChild(card);
+            });
+
+            // Renderizar Columna 2 (Letras)
+            wordsIdxs.forEach(wIdx => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.dataset.value = wIdx + 1;
+                card.dataset.col = '2';
+                card.innerText = numberWords[wIdx];
+                card.onclick = () => handleCardClick(card, 2, wIdx + 1);
+                colWords.appendChild(card);
+            });
+
+            // Renderizar Columna 3 (Pelotitas)
+            dotsIdxs.forEach(dIdx => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.dataset.value = dIdx + 1;
+                card.dataset.col = '3';
+                
+                const wrapper = document.createElement('div');
+                wrapper.className = 'dots-wrapper';
+                const count = dIdx + 1;
+                for (let i = 0; i < count; i++) {
+                    const dot = document.createElement('span');
+                    dot.className = 'dot';
+                    dot.style.background = dotColors[dIdx % dotColors.length];
+                    wrapper.appendChild(dot);
+                }
+                card.appendChild(wrapper);
+                card.onclick = () => handleCardClick(card, 3, dIdx + 1);
+                colDots.appendChild(card);
+            });
+        }
+
+        function handleCardClick(card, col, val) {
+            if (card.classList.contains('matched') || card.classList.contains('disabled')) return;
+
+            // PASO 1: Seleccionar número en Columna 1
+            if (col === 1) {
+                // Deseleccionar anterior de columna 1 si no ha completado su triada
+                document.querySelectorAll('#col-nums .card').forEach(c => c.classList.remove('selected'));
+                document.querySelectorAll('#col-words .card').forEach(c => c.classList.remove('selected'));
+                
+                currentActiveNum = val;
+                currentActiveWordCard = null;
+                card.classList.add('selected');
+                speak(val.toString());
+            } 
+            // PASO 2: Seleccionar letra en Columna 2
+            else if (col === 2) {
+                if (!currentActiveNum) {
+                    speak("Primero selecciona un número en la primera columna");
+                    return;
+                }
+
+                const numCard = document.querySelector(`#col-nums .card[data-value='${currentActiveNum}']:not(.matched)`);
+                if (!numCard) return;
+
+                if (val === currentActiveNum) {
+                    // ¡Correcto en letra! Dibujar línea de Col 1 a Col 2
+                    document.querySelectorAll('#col-words .card').forEach(c => c.classList.remove('selected'));
+                    card.classList.add('selected');
+                    currentActiveWordCard = card;
+
+                    const praises = ["BIEN", "EXCELENTE", "ADELANTE"];
+                    const randomPraise = praises[Math.floor(Math.random() * praises.length)];
+                    showFeedback(randomPraise + "!");
+                    speak(randomPraise + ", ahora busca la cantidad de pelotitas");
+                } else {
+                    // Error
+                    mistakes++;
+                    updateStats();
+                    card.classList.add('selected');
+                    setTimeout(() => card.classList.remove('selected'), 400);
+                    speak("Inténtalo de nuevo");
+                    checkMistakeLimit();
+                }
+            } 
+            // PASO 3: Seleccionar pelotitas en Columna 3
+            else if (col === 3) {
+                if (!currentActiveNum || !currentActiveWordCard) {
+                    speak("Primero debes unir el número con su letra");
+                    return;
+                }
+
+                const numCard = document.querySelector(`#col-nums .card[data-value='${currentActiveNum}']`);
+                const wordCard = currentActiveWordCard;
+
+                if (val === currentActiveNum) {
+                    // ¡Correcto en cantidad! Marcar los tres elementos como matched
+                    numCard.classList.remove('selected');
+                    wordCard.classList.remove('selected');
+
+                    numCard.classList.add('matched');
+                    wordCard.classList.add('matched');
+                    card.classList.add('matched');
+
+                    // Dibujar líneas conectoras calibradas (Col1 -> Col2 y Col2 -> Col3)
+                    drawConnectors(numCard, wordCard, card);
+
+                    // Al haber seleccionado al final la cantidad correspondiente, decir nuevamente el número
+                    speak(val.toString(), () => {
+                        checkRoundCompletion();
+                    });
+
+                    currentActiveNum = null;
+                    currentActiveWordCard = null;
+                } else {
+                    // Error en cantidad
+                    mistakes++;
+                    updateStats();
+                    card.classList.add('selected');
+                    setTimeout(() => card.classList.remove('selected'), 400);
+                    speak("Esa no es la cantidad. Inténtalo de nuevo");
+                    checkMistakeLimit();
+                }
+            }
+        }
+
+        function drawConnectors(card1, card2, card3) {
+            const container = document.getElementById('board-container');
+            const containerRect = container.getBoundingClientRect();
+            const svg = document.getElementById('line-canvas');
+
+            const r1 = card1.getBoundingClientRect();
+            const r2 = card2.getBoundingClientRect();
+            const r3 = card3.getBoundingClientRect();
+
+            // Coordenadas relativas exactas al contenedor
+            const x1 = r1.right - containerRect.left;
+            const y1 = r1.top + r1.height / 2 - containerRect.top;
+
+            const x2Start = r2.left - containerRect.left;
+            const x2End = r2.right - containerRect.left;
+            const y2 = r2.top + r2.height / 2 - containerRect.top;
+
+            const x3 = r3.left - containerRect.left;
+            const y3 = r3.top + r3.height / 2 - containerRect.top;
+
+            // Línea de Columna 1 a Columna 2
+            const line1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line1.setAttribute('x1', x1);
+            line1.setAttribute('y1', y1);
+            line1.setAttribute('x2', x2Start);
+            line1.setAttribute('y2', y2);
+            line1.setAttribute('stroke', '#1dd1a1');
+            line1.setAttribute('stroke-width', '5');
+            line1.setAttribute('stroke-linecap', 'round');
+            svg.appendChild(line1);
+
+            // Línea de Columna 2 a Columna 3
+            const line2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line2.setAttribute('x1', x2End);
+            line2.setAttribute('y1', y2);
+            line2.setAttribute('x2', x3);
+            line2.setAttribute('y2', y3);
+            line2.setAttribute('stroke', '#1dd1a1');
+            line2.setAttribute('stroke-width', '5');
+            line2.setAttribute('stroke-linecap', 'round');
+            svg.appendChild(line2);
+
+            lines.push(line1, line2);
+        }
+
+        function updateStats() {
+            document.getElementById('current-round').innerText = round;
+            document.getElementById('current-mistakes').innerText = mistakes;
+        }
+
+        function checkMistakeLimit() {
+            if (mistakes > 4) {
+                speak("Has superado las 4 fallas permitidas. Repasemos la ronda nuevamente.");
+                setTimeout(() => {
+                    initRound();
+                }, 1500);
+            }
+        }
+
+        function checkRoundCompletion() {
+            const unmatched = document.querySelectorAll('#col-nums .card:not(.matched)');
+            if (unmatched.length === 0) {
+                // Ronda completada con éxito
+                if (round === 1) {
+                    speak("¡Excelente trabajo en la ronda 1! Pasemos a la ronda 2.");
+                    setTimeout(() => {
+                        round = 2;
+                        initRound();
+                    }, 2000);
+                } else {
+                    // Fin del juego completo
+                    showGameOverModal(true);
+                }
+            } else {
+                // Sugerir el siguiente número disponible
+                const nextCard = unmatched[0];
+                currentActiveNum = parseInt(nextCard.dataset.value);
+                speak("Busca el número " + currentActiveNum);
+            }
+        }
+
+        function showGameOverModal(success) {
+            const modal = document.getElementById('gameover-modal');
+            const title = document.getElementById('modal-title');
+            const text = document.getElementById('modal-text');
+            const btn = document.getElementById('modal-btn');
+
+            modal.style.display = 'flex';
+
+            if (success) {
+                title.innerText = "¡Felicidades Campeón! 🏆";
+                text.innerText = "Has completado exitosamente las 2 rondas del pizarrón mágico con menos de 4 fallas.";
+                btn.innerText = "Jugar de Nuevo";
+                speak("¡Felicidades Campeón! Has completado exitosamente el juego.");
+            }
+        }
+
+        function restartFullGame() {
+            document.getElementById('gameover-modal').style.display = 'none';
+            round = 1;
+            mistakes = 0;
+            initRound();
+        }
+    </script>
+</body>
+</html>
